@@ -1,24 +1,28 @@
-from flask import Flask, render_template, request
-from Iris import predict_iris_species  # Import the function from Iris.py
+import pytest
+from flask import Flask
 
-app = Flask(__name__)
+@pytest.fixture
+def app():
+    app = Flask(__name__)
+    app.config['TESTING'] = True
+    return app
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+@pytest.fixture
+def client(app):
+    return app.test_client()
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    # Get user input from the form
-    sepal_length = float(request.form.get("sepal_length"))
-    sepal_width = float(request.form.get("sepal_width"))
-    petal_length = float(request.form.get("petal_length"))
-    petal_width = float(request.form.get("petal_width"))
+def test_index_page(app, client):
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b"Iris Flower Species Predictor" in response.data
 
-    # Call the function from Iris.py to make predictions
-    prediction = predict_iris_species(sepal_length, sepal_width, petal_length, petal_width)
-
-    return render_template("result.html", prediction=prediction)
-
-if __name__ == "__main__":
-    app.run(debug=True)
+def test_predict_endpoint(app, client):
+    data = {
+        'sepal_length': '5.1',
+        'sepal_width': '3.5',
+        'petal_length': '1.4',
+        'petal_width': '0.2'
+    }
+    response = client.post('/predict', data=data)
+    assert response.status_code == 200
+    assert b"Prediction:" in response.data
